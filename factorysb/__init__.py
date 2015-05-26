@@ -1,2 +1,2 @@
-# -*- coding: utf-8 -*-
-from fact import Factory
+from model.factory import Factory
+from optimize.create import random_job_list
