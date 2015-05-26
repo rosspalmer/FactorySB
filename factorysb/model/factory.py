@@ -21,7 +21,7 @@ class Factory(object):
 
     def create_order(self, product_name, amount, time, late_fee):
         order = {'product_name':product_name, 'amount':amount,'time':time,
-            'late_fee':late_fee, 'total_fee':0, 'complete':'no'}
+            'late_fee':late_fee, 'total_fee':0, 'complete':0}
         self.ord = self.ord.append(order, ignore_index=True).sort('time')
 
     def create_store(self, name, product_list, limit=1):
@@ -36,9 +36,8 @@ class Factory(object):
 
     def run(self, output_store):
         for line in self.lines:
-            print line
             self.env.process(self.lines[line].run(self.job_list[line]))
-        #self.env.process(self.fill_orders(output_store))
+        self.env.process(self.fill_orders(output_store))
         self.env.run()
         for line in self.lines:
             log = self.lines[line].log
@@ -46,18 +45,20 @@ class Factory(object):
             self.log = self.log.append(log,ignore_index=True).sort('start')
 
     def fill_orders(self, output_store):
-        while 'no' in self.ord['complete'].unique():
-            for name in self.ord['product_name'].unique():
-                order = self.ord[self.ord['product_name'] == name \
-                        and self.ord['complete'] == 'no'].iloc[0]
-                if order <= self.stores[output_store].c.level:
-                    yield self.stores[output_store].c.get(order['amount'])
+        while len(self.ord[self.ord['complete'] == 0].index) > 0:
+            for name in self.ord[self.ord['complete'] == 0]\
+                        ['product_name'].unique():
+                order = self.ord[self.ord['product_name'] == name]
+                order = order[order['complete'] == 0].iloc[0]
+                if order['amount'] <= self.stores[output_store].c[name].level:
+                    yield self.stores[output_store].c[name].get(order['amount'])
                     if self.env.now > order['time']:
-                        order['late_fine'] = order['late_fee']\
+                        order['total_fee'] = order['late_fee']\
                             *int(self.env.now/order['time'])
                     else:
-                        order['late_fine'] = 0
-                    order['complete'] = 'yes'
+                        order['total_fee'] = 0
+                    order['complete'] = self.env.now
                     self.ord = self.ord.drop(order.name)
                     self.ord = self.ord.append(order, ignore_index='True')
+                    #print self.ord
             yield self.env.timeout(15)
