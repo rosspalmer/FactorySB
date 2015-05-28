@@ -16,7 +16,7 @@ class Factory(object):
 
     def create_product(self, name, job_amount, job_time, transport):
         prod = {'job_amount':job_amount,
-                    'job_time':job_time,'transport':transport}
+                'job_time':job_time,'transport':transport}
         self.prod[name] = prod
 
     def create_order(self, product_name, amount, time, late_fee):
@@ -59,6 +59,5 @@ class Factory(object):
                         order['total_fee'] = 0
                     order['complete'] = self.env.now
                     self.ord = self.ord.drop(order.name)
-                    self.ord = self.ord.append(order, ignore_index='True')
-                    #print self.ord
+                    self.ord = self.ord.append(order)
             yield self.env.timeout(15)
