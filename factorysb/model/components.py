@@ -6,14 +6,17 @@ import pandas as pd
 class Store(object):
 
     #|Import enviroment, set limit of access points
-    def __init__(self, env, limit):
+    def __init__(self, env, db):
         self.env = env
-        self.r = simpy.Resource(self.env, limit)
-        self.c = {}
+        self.db = db
+        self.c = self.load_inventory()
+        self.log = pd.DataFrame()
 
     #|Add product container (type) to Store object
-    def add_product(self, product_name, amount):
-        self.c[product_name] = simpy.Container(self.env, init=amount)
+    def load_inventory(self):
+        for product in self.db['stores'].to_dict():
+            print product
+        return product
 
 #|Line object simulates a production line by running through
 #|a product list by processing objects from
@@ -21,25 +24,21 @@ class Line(object):
 
     #|Import enviroment, product database, job list,
     #|input Store and output Store and create log DataFrame
-    def __init__(self, env, prod, in_store, out_store):
+    def __init__(self, env, db):
         self.env = env
-        self.prod = prod
-        self.in_store = in_store
-        self.out_store = out_store
+        self.db = db
         self.log = pd.DataFrame()
 
     #|Run Line process
-    def run(self, job_list):
+    def run(self):
 
         #|Cycle through list of jobs
-        for job in job_list:
+        for job in self.db['schedule'].to_dict():
 
             #|Transport items from input Store, run job on Line, and
             #|transport items to output Store
-            start = self.env.now
-            yield self.env.process(self.transport(job, self.in_store, 'from'))
-            job_start = self.env.now
-            yield self.env.timeout(self.prod[job]['job_time'])
+            job_time = self.db['name']
+            yield self.env.timeout(self.db[job]['job_time'])
             job_end = self.env.now
             yield self.env.process(self.transport(job, self.out_store, 'to'))
             end = self.env.now

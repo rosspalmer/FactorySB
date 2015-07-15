@@ -1,3 +1,4 @@
+import database
 import components as cp
 
 import simpy
@@ -7,32 +8,23 @@ class Factory(object):
 
     def __init__(self):
         self.env = simpy.Environment()
-        self.prod = {}
-        self.ord = pd.DataFrame()
-        self.stores = {}
+        self.db = database.data()
+        self.db.load_sql()
         self.lines = {}
-        self.job_list = {}
+        self.stores = {}
         self.log = pd.DataFrame()
 
-    def create_product(self, name, job_amount, job_time, transport):
-        prod = {'job_amount':job_amount,
-                'job_time':job_time,'transport':transport}
-        self.prod[name] = prod
+    def build(self):
 
-    def create_order(self, product_name, amount, time, late_fee):
-        order = {'product_name':product_name, 'amount':amount,'time':time,
-            'late_fee':late_fee, 'total_fee':0, 'complete':0}
-        self.ord = self.ord.append(order, ignore_index=True).sort('time')
+        for line_name in self.db.db['lines']['name'].unique():
+            self.lines[line_name] = cp.Line(self.env, self.db)
 
-    def create_store(self, name, product_list, limit=1):
-        store = cp.Store(self.env, limit)
-        for product in product_list:
-            store.add_product(product['name'],product['amount'])
-        self.stores[name] = store
+        for store_name in self.db.db['stores']['name'].unique():
+            self.lines[store_name] = cp.Store(self.env, self.db)
 
-    def create_line(self, name, in_store, out_store):
-        self.lines[name] = cp.Line(self.env, self.prod,
-                self.stores[in_store], self.stores[out_store])
+
+
+###############################################3
 
     def run(self, output_store):
         for line in self.lines:
@@ -61,3 +53,6 @@ class Factory(object):
                     self.ord = self.ord.drop(order.name)
                     self.ord = self.ord.append(order)
             yield self.env.timeout(15)
+
+f = Factory()
+f.build()
